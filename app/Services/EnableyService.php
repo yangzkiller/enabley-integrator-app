@@ -23,10 +23,10 @@ class EnableyService
 
     private function authenticate(): void
     {
-        $response = Http::post($this->baseUrl . '/api/v1/token', [
+        $response = Http::post($this->baseUrl . '/api/v1/token?' . http_build_query([
             'clientKey' => $this->clientKey,
             'secret'    => $this->secret,
-        ]);
+        ]));
 
         $this->token = $response->json('access_token');
     }
@@ -95,5 +95,44 @@ class EnableyService
             ->get($this->baseUrl . "/api/v1/groups/{$groupIdentifier}");
 
         return $response->ok() ? $response->object() : null;
+    }
+
+    /**
+     * Conta o número de membros de um grupo.
+     */
+    public function countGroupMembers(string $groupIdentifier): int
+    {
+        $count = 0;
+        $paginationKey = null;
+
+        do {
+            $params = ['subAccountName' => 'cejam'];
+            if ($paginationKey) $params['paginationKey'] = $paginationKey;
+
+            $response = Http::withToken($this->token())
+                ->get($this->baseUrl . '/api/v3/users', $params);
+
+            $data = $response->object();
+            $users = $data->items ?? [];
+
+            foreach ($users as $user) {
+                // Verifica se o usuário está no grupo
+                $groupsResponse = Http::withToken($this->token())
+                    ->get($this->baseUrl . "/api/v1/users/{$user->identifier}/groups");
+                
+                $groups = $groupsResponse->json() ?? [];
+                foreach ($groups as $group) {
+                    if ($group['identifier'] === $groupIdentifier) {
+                        $count++;
+                        break;
+                    }
+                }
+            }
+
+            $paginationKey = $data->paginationKey ?? null;
+
+        } while ($paginationKey);
+
+        return $count;
     }
 }
