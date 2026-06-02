@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('colaboradores', function (Blueprint $table) {
             $table->string('enabley_identifier')->nullable();
-            $table->boolean('enabley_enabled')->nullable();
+            $table->timestamp('synced_to_enabley_at')->nullable();
         });
     }
 
